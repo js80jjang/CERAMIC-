@@ -440,11 +440,11 @@ textarea::placeholder{color:var(--tx3)}
         <div class="field">
           <label>주방 도면 사진</label>
           <div class="photo-upload-area" id="photo-area" onclick="document.getElementById('f-photo').click()">
-            <input type="file" id="f-photo" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelect(this)">
+            <input type="file" id="f-photo" accept="image/*" style="display:none" onchange="onPhotoSelect(this)">
             <div id="photo-placeholder">
               <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="opacity:.4;margin-bottom:8px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
               <div style="font-size:13px;color:var(--tx3);font-weight:500">탭하여 사진 촬영 또는 선택</div>
-              <div style="font-size:11px;color:var(--tx3);margin-top:4px">카메라 촬영 / 갤러리에서 선택</div>
+              <div style="font-size:11px;color:var(--tx3);margin-top:4px">카메라 촬영 또는 갤러리에서 선택</div>
             </div>
             <img id="photo-preview" src="" alt="" style="display:none;width:100%;border-radius:10px;max-height:240px;object-fit:cover">
           </div>
@@ -617,7 +617,7 @@ textarea::placeholder{color:var(--tx3)}
 <div id="toast"></div>
 
 <script>
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbynTxGPvB-B77m68dMBn8H0e2EbY2yZfJpOIOcgQFenxyg-WyidgejnXp6YRj7f1hZD/exec';
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbw_JNiLzX-pON8KMyy5KnyxHxyG7vNEtVJl0rkPAKwI3GTOotIfkPfpVROIazAgC3jE/exec';
 
 // ── 지역 ─────────────────────────────────────────────────────
 const REGIONS = {
@@ -757,46 +757,55 @@ function setPhotoStatus(state, msg, bg, color){
   el.textContent = msg;
 }
 
-// ── 사진 드라이브 업로드 ─────────────────────────────────────
+// ── 사진 드라이브 업로드 (JSONP — CORS 우회) ────────────────
 async function uploadPhoto(entry){
   if(!selectedPhotoFile) return '';
 
   // 파일명: 고객명_현장주소_상담날짜
   const consultDate = entry.consultDate
-    ? entry.consultDate.replace(/-/g, '.') // 2026-05-30 → 2026.05.30
-    : new Date().toLocaleDateString('ko-KR').replace(/\. /g,'.').replace('.','');
-  const addr = (entry.address || '').replace(/\s+/g,'_').replace(/[\/\:*?"<>|]/g,'') || '주소없음';
-  const name = (entry.name || '').replace(/\s+/g,'') || '이름없음';
-  const ext  = selectedPhotoFile.name.split('.').pop() || 'jpg';
-  const filename = `${name}_${addr}_${consultDate}.${ext}`;
+    ? entry.consultDate.replace(/-/g, '.')
+    : new Date().toLocaleDateString('ko-KR').replace(/\.\s/g,'.').slice(0,-1);
+  const addr = (entry.address||'').replace(/\s+/g,'_').replace(/[/\\:*?"<>|]/g,'').slice(0,30) || '주소없음';
+  const name = (entry.name||'').replace(/\s+/g,'') || '이름없음';
+  const ext  = (selectedPhotoFile.name.split('.').pop()||'jpg').toLowerCase();
+  const filename = name+'_'+addr+'_'+consultDate+'.'+ext;
 
   setPhotoStatus('uploading','⏳ 드라이브에 업로드 중...','var(--wnl)','var(--wn)');
 
   // base64 변환
-  const base64 = await new Promise((resolve, reject)=>{
+  const base64 = await new Promise((resolve,reject)=>{
     const reader = new FileReader();
     reader.onload = e => resolve(e.target.result.split(',')[1]);
     reader.onerror = reject;
     reader.readAsDataURL(selectedPhotoFile);
   });
 
-  // POST로 드라이브 업로드
-  const res = await fetch(GAS_URL, {
-    method: 'POST',
-    headers: {'Content-Type': 'text/plain'},
-    body: JSON.stringify({
-      base64,
+  // JSONP로 업로드 (모바일 CORS 우회)
+  return new Promise((resolve,reject)=>{
+    const cb = '_upcb'+Date.now();
+    const sc = document.createElement('script');
+    const tm = setTimeout(()=>{cleanup();reject(new Error('업로드 타임아웃'));},30000);
+    function cleanup(){clearTimeout(tm);delete window[cb];sc.parentNode&&sc.parentNode.removeChild(sc);}
+    window[cb] = function(res){
+      cleanup();
+      if(res&&res.result==='success'){
+        setPhotoStatus('ok','✓ 드라이브 업로드 완료','var(--okl)','var(--ok)');
+        resolve(res.url);
+      } else {
+        reject(new Error(res?res.message:'업로드 실패'));
+      }
+    };
+    const params = new URLSearchParams({
+      callback: cb,
+      action: 'upload',
       filename,
-      mimeType: selectedPhotoFile.type || 'image/jpeg'
-    })
+      mimeType: selectedPhotoFile.type||'image/jpeg',
+      base64
+    });
+    sc.src = GAS_URL+'?'+params.toString();
+    sc.onerror = ()=>{cleanup();reject(new Error('업로드 스크립트 오류'));};
+    document.head.appendChild(sc);
   });
-  const json = await res.json();
-  if(json.result === 'success'){
-    setPhotoStatus('ok','✓ 드라이브 업로드 완료','var(--okl)','var(--ok)');
-    return json.url;
-  } else {
-    throw new Error(json.message || '업로드 실패');
-  }
 }
 
 // ── 시공 부위 관리 ───────────────────────────────────────────
