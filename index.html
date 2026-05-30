@@ -274,6 +274,28 @@ html,body{height:100%;font-family:'Noto Sans KR',-apple-system,sans-serif;backgr
 .btn-ok:active{transform:scale(.98)}
 .modal-card{margin-bottom:10px}
 
+/* ── 시공 부위 ── */
+.part-item{
+  background:var(--sur2);border-radius:var(--r);
+  padding:12px 13px;margin-bottom:8px;
+  border-left:3px solid var(--ac);
+}
+.part-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.part-name{font-size:13px;font-weight:700;color:var(--ac)}
+.part-del{width:26px;height:26px;border:none;background:none;cursor:pointer;color:var(--tx3);border-radius:6px;display:flex;align-items:center;justify-content:center}
+.part-del:active{background:var(--dnl);color:var(--dn)}
+.part-add-btn{
+  padding:7px 13px;border-radius:100px;
+  font-size:12px;font-weight:600;font-family:'Noto Sans KR',sans-serif;
+  cursor:pointer;border:1.5px solid var(--ac);
+  background:var(--acl);color:var(--ac);
+  transition:all .15s;white-space:nowrap;
+}
+.part-add-btn:active{background:var(--ac);color:#fff}
+.part-add-custom{border-color:var(--bd2);background:var(--sur2);color:var(--tx2)}
+.part-add-custom:active{background:var(--bd2);color:var(--tx)}
+.part-empty{font-size:12px;color:var(--tx3);text-align:center;padding:12px 0;display:none}
+
 /* ── 사진 업로드 ── */
 .photo-upload-area{
   border:2px dashed var(--bd2);border-radius:var(--rl);
@@ -367,10 +389,16 @@ html,body{height:100%;font-family:'Noto Sans KR',-apple-system,sans-serif;backgr
 
       <div class="card">
         <div class="card-title">제품 정보</div>
-        <div class="field"><label>제품명</label><input type="text" id="f-prod" placeholder="제품명 입력"></div>
-        <div class="field-row">
-          <div class="field"><label>사이즈</label><input type="text" id="f-size" placeholder="예: 600×2400"></div>
-          <div class="field"><label>수량</label><input type="text" id="f-qty" placeholder="예: 5장"></div>
+
+        <!-- 시공 부위 목록 -->
+        <div id="f-parts-list"></div>
+
+        <!-- 부위 추가 버튼들 -->
+        <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:4px">
+          <button class="part-add-btn" onclick="addPart('주방 상판')">+ 주방 상판</button>
+          <button class="part-add-btn" onclick="addPart('주방 미드웨이')">+ 주방 미드웨이</button>
+          <button class="part-add-btn" onclick="addPart('아일랜드')">+ 아일랜드</button>
+          <button class="part-add-btn part-add-custom" onclick="addCustomPart()">+ 직접 입력</button>
         </div>
       </div>
 
@@ -588,12 +616,18 @@ const REGIONS = {
   "경상남도":["거제시","거창군","고성군","김해시","남해군","밀양시","사천시","산청군","양산시","의령군","진주시","창녕군","창원시","통영시","하동군","함안군","함양군","합천군"],
   "제주특별자치도":["서귀포시","제주시"]
 };
-(function(){
+function initSido(){
   ['f-sido','e-sido'].forEach(id=>{
     const el=document.getElementById(id);
+    if(!el) return;
     Object.keys(REGIONS).forEach(r=>{const o=document.createElement('option');o.value=o.textContent=r;el.appendChild(o);});
   });
-})();
+}
+if(document.readyState==='loading'){
+  document.addEventListener('DOMContentLoaded', initSido);
+} else {
+  initSido();
+}
 function syncSgg(sidoId,sggId){
   const v=document.getElementById(sidoId).value;
   const sg=document.getElementById(sggId);
@@ -742,6 +776,79 @@ async function uploadPhoto(entry){
   }
 }
 
+// ── 시공 부위 관리 ───────────────────────────────────────────
+let partIdCounter = 0;
+
+function addPart(name) {
+  const id = ++partIdCounter;
+  const list = document.getElementById('f-parts-list');
+  const div = document.createElement('div');
+  div.className = 'part-item';
+  div.dataset.partId = id;
+  div.innerHTML = `
+    <div class="part-header">
+      <span class="part-name">📐 ${name}</span>
+      <button class="part-del" onclick="removePart(${id})" title="삭제">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <input type="hidden" class="part-name-val" value="${name}">
+    <div class="field" style="margin-bottom:8px">
+      <label style="font-size:11px">제품명</label>
+      <input type="text" class="part-prod" placeholder="제품명 입력">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="field" style="margin-bottom:0">
+        <label style="font-size:11px">사이즈</label>
+        <input type="text" class="part-size" placeholder="예: 600×2400">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label style="font-size:11px">수량</label>
+        <input type="text" class="part-qty" placeholder="예: 5장">
+      </div>
+    </div>
+  `;
+  list.appendChild(div);
+}
+
+function addCustomPart() {
+  const name = prompt('시공 부위 이름을 입력해 주세요:');
+  if (name && name.trim()) addPart(name.trim());
+}
+
+function removePart(id) {
+  const el = document.querySelector(`[data-part-id="${id}"]`);
+  if (el) el.remove();
+}
+
+function getParts() {
+  return [...document.querySelectorAll('#f-parts-list .part-item')].map(el => ({
+    name:    el.querySelector('.part-name-val').value,
+    product: el.querySelector('.part-prod').value.trim(),
+    size:    el.querySelector('.part-size').value.trim(),
+    qty:     el.querySelector('.part-qty').value.trim(),
+  }));
+}
+
+function clearParts() {
+  document.getElementById('f-parts-list').innerHTML = '';
+  partIdCounter = 0;
+}
+
+function setParts(parts) {
+  clearParts();
+  (parts || []).forEach(p => {
+    addPart(p.name);
+    const items = document.querySelectorAll('#f-parts-list .part-item');
+    const last = items[items.length - 1];
+    if (last) {
+      last.querySelector('.part-prod').value = p.product || '';
+      last.querySelector('.part-size').value = p.size    || '';
+      last.querySelector('.part-qty').value  = p.qty     || '';
+    }
+  });
+}
+
 // ── 탭 전환 ──────────────────────────────────────────────────
 function goTab(name){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -806,7 +913,7 @@ function prepareSave(){
     consultDate:g('f-date'), route:g('f-route'), salesperson:g('f-sp'),
     name, phone, sido, sigungu:sgg, addressDetail:addr,
     address:[sido,sgg,addr].filter(Boolean).join(' '),
-    product:g('f-prod'), size:g('f-size'), qty:g('f-qty'),
+    parts:getParts(),
     kitchen:g('f-kitch'), kitchenOptions:getOpts('f-opts','f-etc'),
     measure:g('f-meas'), install:g('f-inst'),
     createdAt:new Date().toLocaleString('ko-KR'), syncStatus:'pending'
@@ -833,16 +940,13 @@ function renderPreview(){
     ${row('상담경로',e.route)}
     ${row('영업담당자',e.salesperson)}
     ${row('주소',e.address)}
-    ${row('제품명',e.product)}
-    ${row('사이즈',e.size)}
-    ${row('수량',e.qty)}
+    ${(e.parts&&e.parts.length)?e.parts.map(p=>'<div class="preview-row"><span class="preview-lbl" style="color:var(--ac);font-weight:700">📐 '+p.name+'</span><span class="preview-val">'+(p.product||'')+(p.size?' '+p.size:'')+(p.qty?' · '+p.qty:'')+'</span></div>').join(''):'<div class="preview-row"><span class="preview-lbl">제품정보</span><span class="preview-val">(없음)</span></div>'}
     ${row('주방구조',e.kitchen)}
     ${row('옵션',(e.kitchenOptions||[]).join(' / '))}
     ${row('실측일정',e.measure?fd(e.measure):'')}
     ${row('시공일정',e.install?fd(e.install):'')}
     <div style="margin-top:10px;font-size:11px;color:var(--tx3)">작성: ${e.createdAt}</div>
   `;
-    ${selectedPhotoFile ? `<div style='margin-top:12px'><div style='font-size:11px;color:var(--tx3);font-weight:600;margin-bottom:6px'>📷 도면 사진 (전송 시 드라이브 업로드)</div><img src='${document.getElementById("photo-preview").src}' style='width:100%;border-radius:10px;max-height:200px;object-fit:cover'></div>` : ''}
   sendBtn.style.display='flex'; discBtn.style.display='flex';
 }
 
@@ -909,6 +1013,7 @@ function clearForm(){
   .forEach(id=>s(id,''));
   clearOpts('f-opts','f-etc','f-etc-wrap');
   syncSgg('f-sido','f-sgg');
+  clearParts();
   removePhoto();
 }
 
@@ -921,7 +1026,7 @@ function openEdit(id){
   s('e-name',e.name); s('e-phone',e.phone);
   s('e-sido',e.sido); syncSgg('e-sido','e-sgg'); s('e-sgg',e.sigungu);
   s('e-addr',e.addressDetail);
-  s('e-prod',e.product); s('e-size',e.size); s('e-qty',e.qty);
+  setParts(e.parts||[]);
   s('e-kitch',e.kitchen);
   clearOpts('e-opts','e-etc','e-etc-wrap');
   setOpts('e-opts','e-etc','e-etc-wrap',e.kitchenOptions||[]);
@@ -940,7 +1045,7 @@ async function updateEntry(){
     consultDate:g('e-date'),route:g('e-route'),salesperson:g('e-sp'),
     name,phone,sido,sigungu:sgg,addressDetail:addr,
     address:[sido,sgg,addr].filter(Boolean).join(' '),
-    product:g('e-prod'),size:g('e-size'),qty:g('e-qty'),
+    parts:getParts(),
     kitchen:g('e-kitch'),kitchenOptions:getOpts('e-opts','e-etc'),
     measure:g('e-meas'),install:g('e-inst'),
     updatedAt:new Date().toLocaleString('ko-KR'),syncStatus:'pending'
@@ -1029,7 +1134,7 @@ function renderList(){
       <div class="ec-chips">
         ${e.salesperson?`<span class="chip chip-s">${e.salesperson}</span>`:''}
         ${e.route?`<span class="chip chip-r">${e.route}</span>`:''}
-        ${e.product?`<span class="chip chip-p">📦 ${e.product}${e.size?' '+e.size:''}${e.qty?' · '+e.qty:''}</span>`:''}
+        ${(e.parts&&e.parts.length)?e.parts.slice(0,3).map(p=>`<span class="chip chip-p">📐 ${p.name}${p.product?' '+p.product:''}${p.size?' '+p.size:''}${p.qty?' · '+p.qty:''}</span>`).join(''):(e.product?`<span class="chip chip-p">📦 ${e.product}</span>`:'')}
         ${e.kitchen?`<span class="chip chip-k">🍳 ${e.kitchen}</span>`:''}
         ${(e.kitchenOptions||[]).map(o=>`<span class="chip chip-o">${o}</span>`).join('')}
         ${sc(e.syncStatus)}
@@ -1051,11 +1156,11 @@ function renderList(){
 // ── CSV ───────────────────────────────────────────────────────
 function exportCSV(){
   if(!entries.length){toast('내보낼 데이터가 없습니다.');return;}
-  const h=['상담일자','상담경로','영업담당자','고객명','전화번호','시도','시군구','상세주소','제품명','사이즈','수량','주방구조','주방옵션','실측일정','시공일정','전송여부','등록일시'];
+  const h=['상담일자','상담경로','영업담당자','고객명','전화번호','시도','시군구','상세주소','시공부위(부위명|제품명|사이즈|수량)','주방구조','주방옵션','실측일정','시공일정','전송여부','등록일시'];
   const rows=entries.map(e=>[
     e.consultDate,e.route,e.salesperson,e.name,e.phone,
     e.sido,e.sigungu,e.addressDetail,
-    e.product,e.size,e.qty,
+    (e.parts&&e.parts.length)?e.parts.map(p=>[p.name,p.product,p.size,p.qty].filter(Boolean).join('|')).join(';'):'',
     e.kitchen,(e.kitchenOptions||[]).join('/'),
     e.measure,e.install,
     e.syncStatus==='ok'?'완료':'미전송',e.createdAt
