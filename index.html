@@ -8,8 +8,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="상담관리">
-<link rel="manifest" href="data:application/json;charset=utf-8,%7B%22name%22%3A%22%EA%B3%A0%EA%B0%9D%20%EC%83%81%EB%8B%B4%20%EA%B4%80%EB%A6%AC%22%2C%22short_name%22%3A%22%EC%83%81%EB%8B%B4%EA%B4%80%EB%A6%AC%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%232D4A2A%22%2C%22theme_color%22%3A%22%232D4A2A%22%2C%22start_url%22%3A%22.%22%7D">
-<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDI0IDEwMjQiPjxyZWN0IHdpZHRoPSIxMDI0IiBoZWlnaHQ9IjEwMjQiIHJ4PSIyMDAiIGZpbGw9IiMyRDRBMkEiLz48cmVjdCB4PSIyMDAiIHk9IjE4MCIgd2lkdGg9IjYyNCIgaGVpZ2h0PSI3MjAiIHJ4PSI2MCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjUwIi8+PHJlY3QgeD0iMzUwIiB5PSIxMzAiIHdpZHRoPSIzMjQiIGhlaWdodD0iMTUwIiByeD0iNDAiIGZpbGw9IiMyRDRBMkEiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSI1MCIvPjxsaW5lIHgxPSIzMjAiIHkxPSI0NjAiIHgyPSI3MDAiIHkyPSI0NjAiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSI1MCIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PGxpbmUgeDE9IjMyMCIgeTE9IjYwMCIgeDI9IjcwMCIgeTI9IjYwMCIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjUwIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48bGluZSB4MT0iMzIwIiB5MT0iNzQwIiB4Mj0iNTUwIiB5Mj0iNzQwIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iNTAiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIvPjwvc3ZnPg==">
+<link rel="manifest" href="./manifest.json">
+<link rel="apple-touch-icon" href="./icon.svg">
 <title>고객 상담 관리</title>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
@@ -1073,6 +1073,15 @@ document.getElementById('hdr-date').textContent=
   new Date().toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
 setSyncStatus('idle','구글 시트 연동');
 updErrBadge(); updSaveBadge();
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js')
+      .then(()=>console.log('SW registered'))
+      .catch(e=>console.log('SW error:', e));
+  });
+}
 </script>
 </body>
 </html>
