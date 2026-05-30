@@ -1,0 +1,26 @@
+{
+  "name": "고객 상담 관리",
+  "short_name": "상담관리",
+  "description": "고객 상담 데이터 입력 및 구글 시트 연동 앱",
+  "start_url": "/CERAMIC-/index.html",
+  "scope": "/CERAMIC-/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#2D4A2A",
+  "theme_color": "#2D4A2A",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "/CERAMIC-/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/CERAMIC-/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
