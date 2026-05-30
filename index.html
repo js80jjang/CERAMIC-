@@ -440,11 +440,11 @@ textarea::placeholder{color:var(--tx3)}
         <div class="field">
           <label>주방 도면 사진</label>
           <div class="photo-upload-area" id="photo-area" onclick="document.getElementById('f-photo').click()">
-            <input type="file" id="f-photo" accept="image/*" style="display:none" onchange="onPhotoSelect(this)">
+            <input type="file" id="f-photo" accept="image/*" capture="environment" style="display:none" onchange="onPhotoSelect(this)">
             <div id="photo-placeholder">
               <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="opacity:.4;margin-bottom:8px"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-              <div style="font-size:13px;color:var(--tx3);font-weight:500">탭하여 사진 촬영 또는 선택</div>
-              <div style="font-size:11px;color:var(--tx3);margin-top:4px">카메라 촬영 또는 갤러리에서 선택</div>
+              <div style="font-size:13px;color:var(--tx3);font-weight:500">탭하여 사진 촬영</div>
+              <div style="font-size:11px;color:var(--tx3);margin-top:4px">카메라로 촬영</div>
             </div>
             <img id="photo-preview" src="" alt="" style="display:none;width:100%;border-radius:10px;max-height:240px;object-fit:cover">
           </div>
@@ -719,20 +719,42 @@ let uploadedPhotoUrl='';       // 드라이브 업로드 후 URL
 function onPhotoSelect(input){
   const file = input.files[0];
   if(!file) return;
-  if(file.size > 10 * 1024 * 1024){ toast('⚠️ 사진은 10MB 이하만 가능합니다.'); return; }
-  selectedPhotoFile = file;
+  if(file.size > 20 * 1024 * 1024){ toast('⚠️ 사진은 20MB 이하만 가능합니다.'); return; }
   uploadedPhotoUrl = '';
+
+  // Canvas로 압축 (최대 1200px, 품질 70%)
+  const img = new Image();
   const reader = new FileReader();
   reader.onload = function(e){
-    const preview = document.getElementById('photo-preview');
-    const placeholder = document.getElementById('photo-placeholder');
-    const area = document.getElementById('photo-area');
-    preview.src = e.target.result;
-    preview.style.display = 'block';
-    placeholder.style.display = 'none';
-    area.classList.add('has-photo');
-    document.getElementById('photo-remove-btn').style.display = 'block';
-    setPhotoStatus('ready','📷 사진 선택됨 — 전송 시 드라이브에 업로드됩니다','var(--wnl)','var(--wn)');
+    img.onload = function(){
+      const MAX = 1200;
+      let w = img.width, h = img.height;
+      if(w > MAX || h > MAX){
+        if(w > h){ h = Math.round(h * MAX/w); w = MAX; }
+        else      { w = Math.round(w * MAX/h); h = MAX; }
+      }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const compressed = canvas.toDataURL('image/jpeg', 0.7);
+
+      // 압축된 이미지로 File 객체 재생성
+      canvas.toBlob(blob => {
+        selectedPhotoFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {type:'image/jpeg'});
+      }, 'image/jpeg', 0.7);
+
+      const preview = document.getElementById('photo-preview');
+      const placeholder = document.getElementById('photo-placeholder');
+      const area = document.getElementById('photo-area');
+      preview.src = compressed;
+      preview.style.display = 'block';
+      placeholder.style.display = 'none';
+      area.classList.add('has-photo');
+      document.getElementById('photo-remove-btn').style.display = 'block';
+      const kb = Math.round(compressed.length * 0.75 / 1024);
+      setPhotoStatus('ready','📷 사진 준비됨 (압축: ~'+kb+'KB) — 전송 시 드라이브 업로드','var(--wnl)','var(--wn)');
+    };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
@@ -772,13 +794,16 @@ async function uploadPhoto(entry){
 
   setPhotoStatus('uploading','⏳ 드라이브에 업로드 중...','var(--wnl)','var(--wn)');
 
-  // base64 변환
-  const base64 = await new Promise((resolve,reject)=>{
-    const reader = new FileReader();
-    reader.onload = e => resolve(e.target.result.split(',')[1]);
-    reader.onerror = reject;
-    reader.readAsDataURL(selectedPhotoFile);
-  });
+  // base64 변환 (압축된 미리보기 이미지 사용)
+  const previewSrc = document.getElementById('photo-preview').src;
+  const base64 = previewSrc.includes('base64,')
+    ? previewSrc.split('base64,')[1]
+    : await new Promise((resolve,reject)=>{
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(selectedPhotoFile);
+      });
 
   // JSONP로 업로드 (모바일 CORS 우회)
   return new Promise((resolve,reject)=>{
