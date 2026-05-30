@@ -152,6 +152,8 @@ html,body{height:100%;font-family:'Noto Sans KR',-apple-system,sans-serif;backgr
   color:var(--tx);background:var(--acl);outline:none;-webkit-appearance:none;
 }
 .etc-wrap input::placeholder{color:var(--tx3)}
+textarea:focus{border-color:var(--ac)!important;box-shadow:0 0 0 3px rgba(45,74,42,.10)}
+textarea::placeholder{color:var(--tx3)}
 
 /* ── 담당자 추가 ── */
 .add-row{display:flex;gap:8px;margin-top:8px}
@@ -427,6 +429,13 @@ html,body{height:100%;font-family:'Noto Sans KR',-apple-system,sans-serif;backgr
       </div>
 
       <div class="card">
+        <div class="card-title">특이사항</div>
+        <div class="field">
+          <textarea id="f-note" placeholder="특이사항을 입력해 주세요&#10;예: 고객 요청사항, 현장 특이사항, 추가 협의 내용 등" rows="4" style="width:100%;padding:12px 13px;border:1.5px solid var(--bd);border-radius:var(--r);font-size:14px;font-family:'Noto Sans KR',sans-serif;color:var(--tx);background:var(--sur);outline:none;resize:vertical;-webkit-appearance:none;transition:border-color .15s"></textarea>
+        </div>
+      </div>
+
+      <div class="card">
         <div class="card-title">도면 사진</div>
         <div class="field">
           <label>주방 도면 사진</label>
@@ -451,6 +460,10 @@ html,body{height:100%;font-family:'Noto Sans KR',-apple-system,sans-serif;backgr
         <div class="field-row">
           <div class="field"><label>실측 일정</label><input type="date" id="f-meas"></div>
           <div class="field"><label>시공 일정</label><input type="date" id="f-inst"></div>
+        </div>
+        <div class="field" style="margin-top:8px">
+          <label>일정 메모</label>
+          <input type="text" id="f-schedule-memo" placeholder="예: 오전 10시 방문, 고객 부재 시 연락 등">
         </div>
       </div>
 
@@ -577,11 +590,21 @@ html,body{height:100%;font-family:'Noto Sans KR',-apple-system,sans-serif;backgr
         <div class="etc-wrap" id="e-etc-wrap"><input type="text" id="e-etc" placeholder="기타 내용 직접 입력"></div>
       </div>
     </div>
-    <div class="modal-card card" style="box-shadow:none;padding:0;margin-bottom:0">
+    <div class="modal-card card" style="box-shadow:none;padding:0;margin-bottom:10px">
       <div class="card-title">일정</div>
       <div class="field-row">
         <div class="field"><label>실측 일정</label><input type="date" id="e-meas"></div>
         <div class="field"><label>시공 일정</label><input type="date" id="e-inst"></div>
+      </div>
+      <div class="field" style="margin-top:8px">
+        <label>일정 메모</label>
+        <input type="text" id="e-schedule-memo" placeholder="예: 오전 10시 방문 등">
+      </div>
+    </div>
+    <div class="modal-card card" style="box-shadow:none;padding:0;margin-bottom:0">
+      <div class="card-title">특이사항</div>
+      <div class="field">
+        <textarea id="e-note" rows="3" placeholder="특이사항을 입력해 주세요" style="width:100%;padding:12px 13px;border:1.5px solid var(--bd);border-radius:var(--r);font-size:14px;font-family:'Noto Sans KR',sans-serif;color:var(--tx);background:var(--sur);outline:none;resize:vertical;-webkit-appearance:none"></textarea>
       </div>
     </div>
     <div class="modal-acts">
@@ -916,6 +939,8 @@ function prepareSave(){
     parts:getParts(),
     kitchen:g('f-kitch'), kitchenOptions:getOpts('f-opts','f-etc'),
     measure:g('f-meas'), install:g('f-inst'),
+    scheduleMemo:g('f-schedule-memo'),
+    note:document.getElementById('f-note').value.trim(),
     createdAt:new Date().toLocaleString('ko-KR'), syncStatus:'pending'
   };
   updSaveBadge();
@@ -945,6 +970,8 @@ function renderPreview(){
     ${row('옵션',(e.kitchenOptions||[]).join(' / '))}
     ${row('실측일정',e.measure?fd(e.measure):'')}
     ${row('시공일정',e.install?fd(e.install):'')}
+    ${e.scheduleMemo?'<div class="preview-row"><span class="preview-lbl">일정 메모</span><span class="preview-val">'+e.scheduleMemo+'</span></div>':''}
+    ${e.note?'<div style="margin-top:10px;padding:10px;background:var(--sur2);border-radius:var(--r);font-size:13px;color:var(--tx2);line-height:1.6"><div style="font-size:11px;font-weight:700;color:var(--tx3);margin-bottom:4px">✏️ 특이사항</div>'+e.note.replace(/\n/g,'<br>')+'</div>':''}
     <div style="margin-top:10px;font-size:11px;color:var(--tx3)">작성: ${e.createdAt}</div>
   `;
   sendBtn.style.display='flex'; discBtn.style.display='flex';
@@ -1015,6 +1042,8 @@ function clearForm(){
   syncSgg('f-sido','f-sgg');
   clearParts();
   removePhoto();
+  s('f-schedule-memo','');
+  document.getElementById('f-note').value='';
 }
 
 // ── 수정 모달 ─────────────────────────────────────────────────
@@ -1031,6 +1060,8 @@ function openEdit(id){
   clearOpts('e-opts','e-etc','e-etc-wrap');
   setOpts('e-opts','e-etc','e-etc-wrap',e.kitchenOptions||[]);
   s('e-meas',e.measure); s('e-inst',e.install);
+  s('e-schedule-memo',e.scheduleMemo||'');
+  document.getElementById('e-note').value=e.note||'';
   document.getElementById('edit-modal').classList.add('open');
 }
 function closeEdit(){document.getElementById('edit-modal').classList.remove('open');editId=null;}
@@ -1048,6 +1079,8 @@ async function updateEntry(){
     parts:getParts(),
     kitchen:g('e-kitch'),kitchenOptions:getOpts('e-opts','e-etc'),
     measure:g('e-meas'),install:g('e-inst'),
+    scheduleMemo:g('e-schedule-memo'),
+    note:document.getElementById('e-note').value.trim(),
     updatedAt:new Date().toLocaleString('ko-KR'),syncStatus:'pending'
   };
   entries[idx]=updated; save(); closeEdit(); renderList();
@@ -1148,6 +1181,7 @@ function renderList(){
         <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
         도면 사진 보기
       </a>`:''}
+      ${e.note?`<div style="margin-top:6px;font-size:11px;color:var(--tx2);background:var(--sur2);padding:6px 8px;border-radius:6px;line-height:1.5"><span style="font-weight:600;color:var(--tx3)">특이사항 </span>${e.note.length>40?e.note.slice(0,40)+'…':e.note}</div>`:''}
       <div class="ec-meta">등록: ${e.createdAt}${e.updatedAt?' | 수정: '+e.updatedAt:''}</div>
     </div>
   `).join('');
@@ -1156,13 +1190,14 @@ function renderList(){
 // ── CSV ───────────────────────────────────────────────────────
 function exportCSV(){
   if(!entries.length){toast('내보낼 데이터가 없습니다.');return;}
-  const h=['상담일자','상담경로','영업담당자','고객명','전화번호','시도','시군구','상세주소','시공부위(부위명|제품명|사이즈|수량)','주방구조','주방옵션','실측일정','시공일정','전송여부','등록일시'];
+  const h=['상담일자','상담경로','영업담당자','고객명','전화번호','시도','시군구','상세주소','시공부위(부위명|제품명|사이즈|수량)','주방구조','주방옵션','실측일정','시공일정','일정메모','특이사항','전송여부','등록일시'];
   const rows=entries.map(e=>[
     e.consultDate,e.route,e.salesperson,e.name,e.phone,
     e.sido,e.sigungu,e.addressDetail,
     (e.parts&&e.parts.length)?e.parts.map(p=>[p.name,p.product,p.size,p.qty].filter(Boolean).join('|')).join(';'):'',
     e.kitchen,(e.kitchenOptions||[]).join('/'),
     e.measure,e.install,
+    e.scheduleMemo||'',e.note||'',
     e.syncStatus==='ok'?'완료':'미전송',e.createdAt
   ].map(c=>`"${(c||'').replace(/"/g,'""')}"`)  .join(','));
   const csv='\uFEFF'+[h.join(','),...rows].join('\n');
